@@ -285,6 +285,117 @@ LocalPlayer.CharacterAdded:Connect(function()
     AssignTracers()
 end)
 
-  	
+OtherTab:AddButton({
+	Name = "AutoFly",
+	Callback = function()
+            local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
-  	
+local player = Players.LocalPlayer
+local character = player.Character
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Konfigurasi
+local speed = 50 -- Kecepatan terbang
+local flyKey = Enum.KeyCode.F -- Tombol untuk Toggle Fly/Unfly
+local upKey = Enum.KeyCode.Space -- Tombol untuk Naik
+local backwardKey = Enum.KeyCode.S -- Tombol untuk Mundur
+local leftKey = Enum.KeyCode.A -- Tombol untuk Kiri
+local rightKey = Enum.KeyCode.D -- Tombol untuk Kanan
+local forwardKey = Enum.KeyCode.W -- Tombol untuk Maju
+
+local isFlying = false
+local bodyVelocity = Instance.new("BodyVelocity")
+local bodyGyro = Instance.new("BodyGyro")
+
+-- Setup BodyVelocity
+bodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
+bodyVelocity.P = 10000
+bodyVelocity.Parent = humanoidRootPart
+
+-- Setup BodyGyro (Untuk menjaga agar karakter menghadap ke arah kamera)
+bodyGyro.MaxTorque = Vector3.new(10000, 10000, 10000)
+bodyGyro.Parent = humanoidRootPart
+
+-- Fungsi untuk Mengaktifkan Terbang
+local function startFly()
+	if isFlying then return end
+	isFlying = true
+	-- Matikan gravitasi karakter (opsional, tapi disarankan)
+	player.Character.Humanoid.PlatformStand = true 
+	print("Fly: ON")
+end
+
+-- Fungsi untuk Mematikan Terbang
+local function stopFly()
+	if not isFlying then return end
+	isFlying = false
+	-- Matikan BodyVelocity agar karakter jatuh
+	bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+	player.Character.Humanoid.PlatformStand = false
+	print("Fly: OFF")
+end
+
+-- Loop Utama (Update setiap frame)
+RunService.RenderStepped:Connect(function()
+	if not isFlying then return end
+
+	-- Dapatkan arah kamera
+	local cameraCFrame = workspace.CurrentCamera.CFrame
+	local cameraDirection = cameraCFrame.lookVector
+
+	-- Reset gaya
+	local moveDirection = Vector3.new(0, 0, 0)
+
+	-- Input untuk Gerakan
+	if UserInputService:IsKeyDown(forwardKey) then
+		moveDirection = moveDirection + cameraDirection
+	end
+	if UserInputService:IsKeyDown(backwardKey) then
+		moveDirection = moveDirection - cameraDirection
+	end
+	if UserInputService:IsKeyDown(leftKey) then
+		moveDirection = moveDirection - cameraCFrame.rightVector
+	end
+	if UserInputService:IsKeyDown(rightKey) then
+		moveDirection = moveDirection + cameraCFrame:rightVector
+	end
+	if UserInputService:IsKeyDown(upKey) then
+		moveDirection = moveDirection + Vector3.new(0, 1, 0)
+	end
+
+	-- Terapkan kecepatan (Velocity)
+	-- Jika tidak ada tombol ditekan, tetap hover (mengambang)
+	if moveDirection == Vector3.new(0, 0, 0) then
+		bodyVelocity.Velocity = Vector3.new(0, 0, 0) -- Hover di tempat
+	else
+		bodyVelocity.Velocity = moveDirection.Unit * speed
+	end
+
+	-- Jaga rotasi karakter menghadap ke depan (relative terhadap kamera)
+	bodyGyro.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + cameraDirection)
+end)
+
+-- Deteksi Tombol Toggle (F)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	if input.KeyCode == flyKey then
+		if isFlying then
+			stopFly()
+		else
+			startFly()
+		end
+	end
+end)
+
+-- Jika karakter respawn, script perlu di-atach ulang (Opsional, untuk keamanan)
+player.CharacterAdded:Connect(function(char)
+	wait(1) -- Tunggu sebentar agar karakter load sempurna
+	humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+	bodyVelocity.Parent = humanoidRootPart
+	bodyGyro.Parent = humanoidRootPart
+end)
+
+								
